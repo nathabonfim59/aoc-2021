@@ -36,6 +36,82 @@ local function msb_init(msb_list, bits)
     end
 end
 
+
+-- Store every bit of the diagnostic in a table
+local function expand_diagnostic(data)
+    local diagnostic = {}
+
+    -- Store every bit of the diagnostic in a table
+    for bit in string.gmatch(data, '.') do
+        table.insert(diagnostic, bit)
+    end
+
+    return diagnostic
+end
+
+local function random_filename(prefix)
+    prefix = prefix or '' -- Default prefix
+    local filename -- The random file name generated
+
+    math.randomseed(os.time())
+    filename = prefix .. math.random()
+
+    return filename
+end
+
+local function filter_to_tmp_file(filename, bits, position, value)
+    local file = io.open(filename, "r")
+    local temp_filename = random_filename('bit-' .. position)
+    local temp_file = io.open(temp_filename, "a")
+
+    local msb_list = {} -- List containing the number of ocurrencies of 1 or 0
+    local line_number = 1
+
+
+    while true do
+        local line = io.read()
+        -- Debug
+        -- print("---")
+        -- print("File: "..filename)
+        -- if (line == nil) then break end
+        -- print("Line: "..line)
+        -- EndDebug
+        if (line == nil) then break end
+
+        -- Count the number of occurrences each bit
+        local diagnostic_report = expand_diagnostic(line)
+
+        for i = 1, bits do
+            -- Debug
+            -- print("---")
+            -- print("File: "..filename)
+            -- print("Value: "..value)
+            -- -- print("Pos: "..position)
+            -- -- print("Counter: "..i)
+            -- print("Report: "..diagnostic_report[i])
+            -- print("Bits: "..bits)
+            -- print("---")
+            -- DebugEnd
+            if (i == position and diagnostic_report[i] == value) then
+                temp_file:write(line, "\n")
+            end
+        end
+
+
+        line_number = line_number + 1
+    end
+
+    -- Debug
+    -- print(diagnostic_report[3])
+    -- os.exit(0)
+    -- DebugEnd
+
+    file.close()
+    temp_file.close()
+
+    return temp_filename
+end
+
 local function part_1(filename)
     local file = io.open(filename, 'r')
     io.input(file)
@@ -44,7 +120,6 @@ local function part_1(filename)
 
     local line_number = 0
     local bits = 0
-    local match_regex = '';
 
     while true do
         local line = io.read()
@@ -55,14 +130,9 @@ local function part_1(filename)
             msb_init(msb_list, bits)
         end
 
-        local diagnostic_report = {}
-
-        -- Create a table with every bit
-        for bit in string.gmatch(line, ".") do
-            table.insert(diagnostic_report, bit)
-        end
-
         -- Calculate the most significant digits for a given bit
+        local diagnostic_report = expand_diagnostic(line)
+
         for i = 1, bits do
             calc_msb(diagnostic_report[i], msb_list[i])
         end
@@ -100,4 +170,51 @@ local function part_1(filename)
     return power_comsuption
 end
 
-print(part_1('./input'))
+
+local function part_2(filename)
+    local file = io.open(filename, "r")
+    io.input(file)
+
+    local bits = 0      -- Bits in the diagnostic report
+    local msb_list = {} -- List containing the number of ocurrencies of 1 or 0
+    local line_number = 1
+
+    while true do
+        local line = io.read()
+        if (line == nil) then break end
+
+        -- Initialization procedures
+        if (line_number == 1) then
+            bits = string.len(line)
+            msb_init(msb_list, bits)
+        end
+
+        -- Count the number of occurrences each bit
+        local diagnostic_report = expand_diagnostic(line)
+
+        for i = 0, bits do
+            calc_msb(diagnostic_report[i], msb_list[i])
+        end
+
+        line_number = line_number + 1
+    end
+
+    file.close()
+
+    -- print(verify_msb)
+    local base_file = filename -- File to read in order to filter
+    for i = 1, bits do
+        base_file = filter_to_tmp_file(
+            base_file,
+            bits,
+            i,
+            verify_msb(msb_list[i])
+        )
+        -- Debug
+        print(base_file)
+        -- #endregion
+    end
+end
+
+print(part_2('sample'))
+-- print(part_1('sample'))
